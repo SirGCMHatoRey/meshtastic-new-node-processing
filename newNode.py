@@ -13,9 +13,6 @@ import urllib.parse
 from pynput import keyboard
 import meshtastic
 import argparse
-import asyncio
-from bleak import BleakScanner
-from bt_info import scan_bluetooth_devices, display_devices, get_user_selection, run_meshtastic_info
 
 from pyfiglet import Figlet
 
@@ -226,7 +223,7 @@ def sleep_and_prompt(sleep_duration):
             print(f"\nSleep time of {sleep_duration} seconds is up.")
 
 
-async def main():
+def main():
     global port, welcomeMsg, NODE_FILE, LOG_FILE, input_active, countdown_active, sleepSeconds
 
     port, verbose, useSettingsMsg = parse_arguments()
@@ -274,33 +271,15 @@ async def main():
         print(f"Using:  {welcome_message}")
 
     if not port:
-        connection_type = input("Is the Meshtastic device connected via USB (C), IP (I), BT (B)? ").strip().lower()
+        connection_type = input("Is the Meshtastic device connected via USB (C) or IP (I)? ").strip().lower()
 
         if connection_type == 'c':
             port = find_meshtastic_port()  # Ensure this function is cross-platform
         elif connection_type == 'i':
             ip_address = input("Enter the IP address of the Meshtastic device: ")
             port = f"--host {ip_address}"
-        elif connection_type == 'b':
-            #port = f"--host {ip_address}"
-                devices = await scan_bluetooth_devices()
-                display_devices(devices)
-    
-                if not devices:
-                    return  # Exit if no devices found
-    
-                selected_device = get_user_selection(devices)
-                print(f"Selected device: Address: {selected_device.address}, Name: {selected_device.name or 'Unknown'}")
-
-                # Check if the device is already paired
-                input("Please ensure the device is paired on your computer. Press Enter to continue...")
-                time.sleep(2)  # Pause briefly to allow pairing process to complete
-
-                # Attempt to run the Meshtastic command directly
-                success = run_meshtastic_info(selected_device.address)
-                port = f"--ble {selected_device.address}"
         else:
-            print("Invalid input. Please enter 'C' for USB,  'I' for IP, 'B' for Bluetooth.")
+            print("Invalid input. Please enter 'C' for USB or 'I' for IP.")
             return None
 
         if port is None:
@@ -309,7 +288,7 @@ async def main():
 
     print(f"Meshtastic device found?: {port}")
 
-    connection_string = f'--host {port[7:]}' if port.startswith('--host') else f'{port}' if port.startswith('--ble') else f'--port {port}'
+    connection_string = f'--host {port[7:]}' if port.startswith('--host') else f'--port {port}'
     print(f"connection_string = {connection_string}")
     while True: 
         current_time = datetime.now()
@@ -372,4 +351,4 @@ async def main():
         print(f"\nSleep time of {sleep_seconds} seconds is up. Continuing with the program.")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
