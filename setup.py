@@ -7,7 +7,6 @@ common_dependencies = [
     'pyserial',
     'pynput',
     'pyfiglet',
-    'bleak',  
 ]
 
 # Platform-specific dependencies
@@ -41,6 +40,7 @@ setup(
     extras_require={
         'windows': platform_dependencies if sys.platform.startswith('win') else [],
         'linux': platform_dependencies if sys.platform.startswith('linux') else [],
+        'dev': ['pytest'],
     },
     entry_points={
         'console_scripts': [
