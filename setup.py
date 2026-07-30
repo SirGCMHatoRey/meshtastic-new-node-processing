@@ -28,7 +28,7 @@ else:
 
 setup(
     name='K3ANO-NewNodes',
-    version='0.86',
+    version='0.87',
     packages=find_packages(),
     description='A tool for processing new nodes in Meshtastic networks',
     long_description=open('README.md', encoding='utf-8').read(),
