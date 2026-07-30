@@ -1,17 +1,13 @@
-import subprocess
 import serial.tools.list_ports
 import sys
 import json
 import os
-import re
 import time
 import threading
-import shutil
 from datetime import datetime
 import webbrowser
 import urllib.parse
 from pynput import keyboard
-import meshtastic
 import argparse
 import asyncio
 from bleak import BleakScanner
@@ -19,7 +15,6 @@ from bt_info import scan_bluetooth_devices, display_devices, get_user_selection,
 
 from pyfiglet import Figlet
 
-from meshtastic.serial_interface import SerialInterface
 from meshtastic_device import find_meshtastic_port, get_nodes_info, sendMsg, run_traceroute
 from node_archive import load_existing_nodes, load_traceroute_log_nodes, save_node, log_traceroute
 from node_classifier import classify_node
@@ -36,11 +31,8 @@ NODE_FILE =  os.path.join(os.path.dirname(__file__), 'nodes.txt')  # File to sto
 LOG_FILE = os.path.join(os.path.dirname(__file__), 'traceroute_log.txt')  # File to log traceroute output
 sleepSeconds = 60  #set as needed...
 port = ''   #'/dev/ttyACM0'  # I do a port check once per execution to Update this to your actual port
-python_executable = "python"  # I also check what python you are at and update this
 input_active = True
 countdown_active = True
-
-remaining_time = 0
 
 
 def parse_arguments():
@@ -78,54 +70,6 @@ def parse_arguments():
 
     return port, verbose, useSettingsMsg
 
-def get_python_command():
-    # Get the version info
-    version_info = sys.version_info
-
-    # Check if we're running under Python 2 or Python 3
-    if version_info.major == 3:
-        python_command = 'python3'
-    else:
-        python_command = 'python'
-
-    # Verify the command exists
-    if shutil.which(python_command) is None:
-        # If the default doesn't exist, try the alternative
-        alternative = 'python' if python_command == 'python3' else 'python3'
-        if shutil.which(alternative) is not None:
-            python_command = alternative
-        else:
-            print("Unable to determine Python command. Defaulting to 'python'")
-            python_command = 'python'
-
-    return python_command
-
-def get_nodes():
-    """Fetch the current node list from the Meshtastic device."""
-    try:
-        global python_executable
-        # Store the result in a variable
-        python_executable = get_python_command()      
-        
-        # Use list form of command to avoid shell=True, which is more cross-platform friendly
-        command = [python_executable, '-m', 'meshtastic', '--port', port, '--info']
-        result = subprocess.run(command, check=True, text=True, capture_output=True)
-        
-        # Regular expression to find node IDs
-        nodes = {}
-        node_pattern = re.compile(r'\"!(\w+)\":\s*{')  # Matches node IDs like "!1c314db4"
-        
-        for line in result.stdout.splitlines():
-            match = node_pattern.search(line)
-            if match:
-                node_id = f"!{match.group(1)}"
-                nodes[node_id] = {}  # Initialize node entry
-        return nodes.keys()  # Return only node IDs
-
-    except subprocess.CalledProcessError as e:
-        print(f"Error fetching nodes: {e.stderr}")
-        return []
-
 # Function to create clickable file paths
 def get_clickable_path(file_name):
     # Get the current working directory
@@ -136,8 +80,6 @@ def get_clickable_path(file_name):
     clickable_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(full_path))
     return clickable_path
 
-# Flag to control the sleep thread
-sleeping = True
 def get_color_code(value, max_value):
     colors = [Fore.RED, Fore.YELLOW, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
     index = min(int(value / max_value * (len(colors) - 1)), len(colors) - 1)
@@ -215,15 +157,6 @@ def handle_user_input(duration):
     # Ensure countdown_active is set to False when exiting
     countdown_active = False
     listener.stop()
-
-
-# Function to sleep for a specified duration and then allow user input
-def sleep_and_prompt(sleep_duration):
-    global sleeping
-    while True:
-        time.sleep(sleep_duration)
-        if sleeping:
-            print(f"\nSleep time of {sleep_duration} seconds is up.")
 
 
 async def main():
@@ -316,7 +249,6 @@ async def main():
         print(f"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Current welcome message: {welcome_message}")
         input_active = True
-        remaining_time = sleep_seconds
         nodes_info = get_nodes_info(connection_string)
         
         if nodes_info is not None:
