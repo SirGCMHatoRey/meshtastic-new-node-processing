@@ -3,11 +3,10 @@ import sys
 import json
 import os
 import time
-import threading
 from datetime import datetime
 import webbrowser
 import urllib.parse
-from pynput import keyboard
+import urllib.request
 import argparse
 import asyncio
 from bleak import BleakScanner
@@ -20,6 +19,7 @@ from node_archive import load_existing_nodes, load_traceroute_log_nodes, save_no
 from node_classifier import classify_node
 from app_settings import load_settings, set_welcome_message
 from window_title import get_active_window, set_window_name, get_window_title
+from countdown_session import run_countdown
 from colorama import init, Fore, Style
 init()
 ############################################################################################################
@@ -31,8 +31,6 @@ NODE_FILE =  os.path.join(os.path.dirname(__file__), 'nodes.txt')  # File to sto
 LOG_FILE = os.path.join(os.path.dirname(__file__), 'traceroute_log.txt')  # File to log traceroute output
 sleepSeconds = 60  #set as needed...
 port = ''   #'/dev/ttyACM0'  # I do a port check once per execution to Update this to your actual port
-input_active = True
-countdown_active = True
 
 
 def parse_arguments():
@@ -80,87 +78,18 @@ def get_clickable_path(file_name):
     clickable_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(full_path))
     return clickable_path
 
-def get_color_code(value, max_value):
-    colors = [Fore.RED, Fore.YELLOW, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
-    index = min(int(value / max_value * (len(colors) - 1)), len(colors) - 1)
-    return colors[index]
-
-def countdown_display(duration):
-    global countdown_active
-    start_time = time.time()
-    max_remaining = duration  # Use the duration for max remaining time
-    while countdown_active and time.time() - start_time < duration:
-        remaining = int(duration - (time.time() - start_time))
-        
-        # Clear the line before printing the new message
-        print(f"\r{' ' * 80}", end='', flush=True)  # Clear the line
-        color = get_color_code(remaining, max_remaining)
-        
-        # Print the countdown message
-        print(f"\r{Fore.YELLOW}{Style.BRIGHT}Press {Fore.GREEN}'L'{Fore.YELLOW} for TRACE log, {Fore.GREEN}'N'{Fore.YELLOW} for NODES, or {Fore.GREEN}'Q'{Fore.YELLOW} to quit.{Style.RESET_ALL} Continue in {color}{remaining:3d}{Style.RESET_ALL} seconds", end='', flush=True)
-        
-        time.sleep(0.1)
+def _open_log():
+    webbrowser.open(get_clickable_path(LOG_FILE))
+    print("\rOpening TRACE log file...", end='', flush=True)
 
 
-def handle_user_input(duration):
-    global input_active, countdown_active
-    input_active = True
-    countdown_active = True
-  #  print(f"Entered handle_user_input with duration: {duration}")
-
-    def on_press(key):
-        global input_active, countdown_active
-        # print(f"Key pressed: {key}")
-        try:
-            active_window = get_active_window()
-            window_title = get_window_title(active_window)
- #           print(f"Current window title: {window_title}")
-
-            if hasattr(key, 'char') and key.char is not None:
-                if 'K3ANO' in window_title:
-                    if key.char.lower() == 'l':
-                        webbrowser.open(get_clickable_path(LOG_FILE))
-                        print("\rOpening TRACE log file...", end='', flush=True)
-                    elif key.char.lower() == 'n':
-                        webbrowser.open(get_clickable_path(NODE_FILE))
-                        print("\rOpening NODES log file...", end='', flush=True)
-                    elif key.char.lower() == 'q':
-                        print("\rExiting user input handling.", end='', flush=True)
-                        input_active = False
-                        countdown_active = False
-                        return False  # Stop listener
-#                else:
- #                   print("Not in K3ANO window, ignoring key press")
-  #          else:
-   #             print("Special key pressed, ignoring...")
-        except Exception as e:
-            print(f"Error handling key press: {e}")
-
-    listener = keyboard.Listener(on_press=on_press)
-    listener.start()
-    # note to reviewer "Keyboard listener started so you can open log files while in newNodes window"
-
-    start_time = time.time()
-    while input_active and countdown_active:
-        current_time = time.time()
-        elapsed_time = current_time - start_time
-        remaining_time = max(0, duration - elapsed_time)
-        
-       # print(f"Elapsed time: {elapsed_time:.2f}s, Remaining time: {remaining_time:.2f}s")
-
-        if remaining_time == 0:
-          #  print("Countdown reached zero, exiting loop")
-            break  # Exit the loop when the countdown reaches zero
-
-        time.sleep(0.1)
-
-    # Ensure countdown_active is set to False when exiting
-    countdown_active = False
-    listener.stop()
+def _open_nodes():
+    webbrowser.open(get_clickable_path(NODE_FILE))
+    print("\rOpening NODES log file...", end='', flush=True)
 
 
 async def main():
-    global port, welcomeMsg, NODE_FILE, LOG_FILE, input_active, countdown_active, sleepSeconds
+    global port, welcomeMsg, NODE_FILE, LOG_FILE, sleepSeconds
 
     port, verbose, useSettingsMsg = parse_arguments()
     print(f"Port: {port}")
@@ -248,7 +177,6 @@ async def main():
         current_time = datetime.now()
         print(f"Current time: {current_time.strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"Current welcome message: {welcome_message}")
-        input_active = True
         nodes_info = get_nodes_info(connection_string)
         
         if nodes_info is not None:
@@ -290,16 +218,7 @@ async def main():
         print(f"{Fore.CYAN}{Style.BRIGHT}\033[4mTrace Log file: {get_clickable_path(LOG_FILE)}\033[0m")
 
 
-        input_active = True
-        countdown_active = True
-        # print('call countdown_display as target of a thread...')
-        display_thread = threading.Thread(target=countdown_display, args=(sleep_seconds,), daemon=True)
-        display_thread.start()
-
-        handle_user_input(sleep_seconds)
-
-        countdown_active = False
-        display_thread.join()
+        run_countdown(sleep_seconds, key_actions={'l': _open_log, 'n': _open_nodes})
 
         print(f"\nSleep time of {sleep_seconds} seconds is up. Continuing with the program.")
 
