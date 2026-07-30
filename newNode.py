@@ -7,7 +7,7 @@ import re
 import time
 import threading
 import shutil
-from datetime import datetime, timedelta
+from datetime import datetime
 import webbrowser
 import urllib.parse
 from pynput import keyboard
@@ -23,6 +23,7 @@ from pyfiglet import Figlet
 from meshtastic.serial_interface import SerialInterface
 from meshtastic_device import find_meshtastic_port, get_nodes_info, sendMsg, run_traceroute
 from node_archive import load_existing_nodes, load_traceroute_log_nodes, save_node, log_traceroute
+from node_classifier import classify_node
 from app_settings import load_settings, set_welcome_message
 from colorama import init, Fore, Style
 init()
@@ -505,21 +506,24 @@ async def main():
                 if last_heard:
                     last_heard_time = datetime.fromtimestamp(last_heard)
                     time_since_last_heard = current_time - last_heard_time
-                  
                     print(f"{Fore.GREEN}Node {node_id} last heard {time_since_last_heard.total_seconds() / 3600:.2f} hours ago")
-                    if time_since_last_heard <= timedelta(hours=2):
-                        if node_id in traceroute_log_nodes:
-                            print(f"{Fore.YELLOW}Skipping node {node_id} as it's already in the traceroute log.")
-                        elif node_id not in existing_nodes:
-                            print(f"New node detected: {node_id}")
-                            _, log_line = run_traceroute(node_id, connection_string)
-                            log_traceroute(log_line)
-                            save_node(node_id, last_heard, user, deviceMetrics, current_time.strftime("%Y-%m-%d %H:%M:%S"))
-                            sendMsg(node_id, welcome_message, connection_string)
-                    else:
-                        print(f"{Fore.WHITE}{Style.BRIGHT} Skipping node {node_id} as it hasn't been heard from in over 2 hours.")
-                else:
+
+                outcome = classify_node(node_id, last_heard, existing_nodes, traceroute_log_nodes, current_time)
+
+                if outcome == "no_last_heard":
                     print(f"{Fore.YELLOW}{Style.BRIGHT}No last heard time available for node {node_id}")
+                elif outcome == "stale":
+                    print(f"{Fore.WHITE}{Style.BRIGHT} Skipping node {node_id} as it hasn't been heard from in over 2 hours.")
+                elif outcome == "already_logged":
+                    print(f"{Fore.YELLOW}Skipping node {node_id} as it's already in the traceroute log.")
+                elif outcome == "known":
+                    print(f"{Fore.YELLOW}Node {node_id} already known, nothing to do.")
+                elif outcome == "new":
+                    print(f"New node detected: {node_id}")
+                    _, log_line = run_traceroute(node_id, connection_string)
+                    log_traceroute(log_line)
+                    save_node(node_id, last_heard, user, deviceMetrics, current_time.strftime("%Y-%m-%d %H:%M:%S"))
+                    sendMsg(node_id, welcome_message, connection_string)
 
         else:
             print("Failed to retrieve nodes info. Retrying in next iteration.")
