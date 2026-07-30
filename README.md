@@ -1,17 +1,98 @@
-This is the initial release of the K3ANO_NewNodes package. It includes the following features:
+# K3ANO NewNodes
 
-Node processing utilities
+A command-line tool for [Meshtastic](https://meshtastic.org/) mesh network operators. It watches your mesh for nodes it hasn't seen before, runs a traceroute against each new node, logs the result, and sends it a welcome message — automatically, on a repeating interval.
 
-Meshtastic integration
+## Features
 
-You can install the latest release of K3ANO_NewNodes using pip:
+- Polls a Meshtastic device (USB serial or IP) for the current node list
+- Detects new nodes (skipping ones already known, already traceroute-logged, or not heard from recently)
+- Runs a traceroute against each new node and logs it to `traceroute_log.txt`
+- Sends a configurable welcome message to new nodes
+- Records every node seen in `nodes.txt`
+- While running, press `L` to open the traceroute log, `N` to open the node list, or `Q` to quit
 
-(go here to get the latest RELEASE pip install https://github.com/StevoKeano/meshtastic-new-node-processing/releases
+## Requirements
 
-Example of installing prerelease v0.6:
+- Python 3.6+
+- A Meshtastic device reachable over USB serial or IP
+- **Windows**: `pywin32`, `pygetwindow`
+- **Linux**: `python3-xlib`, `python3-tk`, `python3-dev`, `xdotool`
 
-pip install https://github.com/StevoKeano/meshtastic-new-node-processing/releases/download/v0.6/K3ANO_NewNodes-0.6-py3-none-any.whl
+## Installation
 
-Then to run:  NewNodes , accept or update the message you'll send and tell me if your radio is USB (C) connected or on IP (I).
+Install a released build with pip, e.g. v0.86:
 
-After one pass you'll have a chance to view log files.
+```bash
+pip install https://github.com/StevoKeano/meshtastic-new-node-processing/releases/download/v0.86/K3ANO_NewNodes-0.86-py3-none-any.whl
+```
+
+See the [Releases page](https://github.com/StevoKeano/meshtastic-new-node-processing/releases) for all available versions and their exact asset filenames.
+
+### From source
+
+```bash
+git clone https://github.com/SirGCMHatoRey/meshtastic-new-node-processing.git
+cd meshtastic-new-node-processing
+pip install -e .
+```
+
+## Usage
+
+Run it with any of these commands (all equivalent, installed as console scripts):
+
+```bash
+NewNodes
+```
+
+You'll be asked to confirm or change the welcome message, then whether your radio is connected via USB (`C`) or IP (`I`). After that it polls on a loop, checking for new nodes each cycle.
+
+### Command-line options
+
+| Flag | Description |
+|---|---|
+| `--p <type> <value>` | Skip the connection prompt. `--p c COM9` (Windows serial), `--p c /dev/ttyACM0` (Linux serial), or `--p i 192.168.1.87` (IP) |
+| `--m` | Use the welcome message from `settings.json` without prompting |
+| `--v` | Enable verbose debug output |
+
+Example:
+
+```bash
+NewNodes --p i 192.168.1.87 --m
+```
+
+## Configuration
+
+The welcome message is stored in `settings.json`:
+
+```json
+{
+  "welcome_message": "Welcome to the mesh! Join us on the AustinMesh discord chat: https://discord.gg/cpDFj345"
+}
+```
+
+Update it interactively when prompted at startup, or edit the file directly.
+
+## Files this tool creates
+
+- `nodes.txt` — every node ID seen, with last-heard time, user info, and device metrics
+- `traceroute_log.txt` — traceroute results for each new node
+
+## Project layout
+
+- `newNode.py` — entry point, connection setup, and the main poll loop
+- `meshtastic_device.py` — Meshtastic CLI adapter (port/IP checks, node info, traceroute, sending messages)
+- `node_archive.py` — reads and writes `nodes.txt` / `traceroute_log.txt`
+- `node_classifier.py` — decides what to do with each node seen (new, already known, stale, etc.)
+- `app_settings.py` — reads and writes `settings.json`
+- `window_title.py` — sets the terminal window title (used to gate the `L`/`N`/`Q` keyboard shortcuts)
+
+## Running tests
+
+```bash
+pip install pytest
+pytest
+```
+
+## License
+
+MIT
