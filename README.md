@@ -4,7 +4,7 @@ A command-line tool for [Meshtastic](https://meshtastic.org/) mesh network opera
 
 ## Features
 
-- Polls a Meshtastic device (USB serial or IP) for the current node list
+- Polls a Meshtastic device (USB serial, IP, or Bluetooth) for the current node list
 - Detects new nodes (skipping ones already known, already traceroute-logged, or not heard from recently)
 - Runs a traceroute against each new node and logs it to `traceroute_log.txt`
 - Sends a configurable welcome message to new nodes
@@ -14,7 +14,7 @@ A command-line tool for [Meshtastic](https://meshtastic.org/) mesh network opera
 ## Requirements
 
 - Python 3.6+
-- A Meshtastic device reachable over USB serial or IP
+- A Meshtastic device reachable over USB serial, IP, or Bluetooth
 - **Windows**: `pywin32`, `pygetwindow`
 - **Linux**: `python3-xlib`, `python3-tk`, `python3-dev`, `xdotool`
 
@@ -44,7 +44,7 @@ Run it with any of these commands (all equivalent, installed as console scripts)
 NewNodes
 ```
 
-You'll be asked to confirm or change the welcome message, then whether your radio is connected via USB (`C`) or IP (`I`). After that it polls on a loop, checking for new nodes each cycle.
+You'll be asked to confirm or change the welcome message, then whether your radio is connected via USB (`C`), IP (`I`), or Bluetooth (`B`). After that it polls on a loop, checking for new nodes each cycle.
 
 ### Command-line options
 
@@ -85,6 +85,7 @@ Update it interactively when prompted at startup, or edit the file directly.
 - `node_classifier.py` — decides what to do with each node seen (new, already known, stale, etc.)
 - `app_settings.py` — reads and writes `settings.json`
 - `window_title.py` — sets the terminal window title (used to gate the `L`/`N`/`Q` keyboard shortcuts)
+- `bt_info.py` — Bluetooth (BLE) device scanning and selection
 
 ## Running tests
 

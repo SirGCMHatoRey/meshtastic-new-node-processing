@@ -7,6 +7,7 @@ common_dependencies = [
     'pyserial',
     'pynput',
     'pyfiglet',
+    'bleak',  
 ]
 
 # Platform-specific dependencies
