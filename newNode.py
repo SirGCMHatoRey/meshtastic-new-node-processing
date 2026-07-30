@@ -21,7 +21,9 @@ from bt_info import scan_bluetooth_devices, display_devices, get_user_selection,
 from pyfiglet import Figlet
 
 from meshtastic.serial_interface import SerialInterface
-from K3ANO_NewNodes.meshtastic_utils import find_meshtastic_port, get_nodes_info, load_existing_nodes, load_traceroute_log_nodes, issue_traceroute, save_node, sendMsg, update_welcome_message, load_settings
+from meshtastic_device import find_meshtastic_port, get_nodes_info, sendMsg, run_traceroute
+from node_archive import load_existing_nodes, load_traceroute_log_nodes, save_node, log_traceroute
+from app_settings import load_settings, set_welcome_message
 from colorama import init, Fore, Style
 init()
 ############################################################################################################
@@ -325,15 +327,6 @@ def get_window_title(window):
         return w.get_wm_name()
     return ""
 
-def get_clickable_path(file_name):
-    # Get the current working directory
-    cwd = os.getcwd()
-    full_path = os.path.join(cwd, file_name)
-
-    # Convert the path to a URL
-    clickable_path = urllib.parse.urljoin('file:', urllib.request.pathname2url(full_path))
-    return clickable_path
-
 def handle_user_input(duration):
     global input_active, countdown_active
     input_active = True
@@ -441,9 +434,13 @@ async def main():
         welcome_message = settings.get('welcome_message', welcomeMsg)
         print(f"Using:  {welcome_message}")
         change = input("Do you want to change the above welcome message? (y/n): ").strip().lower()
-        update_welcome_message(change)
-        settings = load_settings()
-        welcome_message = settings.get('welcome_message', welcomeMsg)
+        if change == 'y':
+            new_message = input("Enter the new welcome message: ")
+            set_welcome_message(new_message)
+            welcome_message = new_message
+            print("Welcome message updated successfully!")
+        else:
+            print("Welcome message remains unchanged.")
     else:
         settings = load_settings()
         welcome_message = settings.get('welcome_message', welcomeMsg)
@@ -515,13 +512,10 @@ async def main():
                             print(f"{Fore.YELLOW}Skipping node {node_id} as it's already in the traceroute log.")
                         elif node_id not in existing_nodes:
                             print(f"New node detected: {node_id}")
-                            traceroute_successful = issue_traceroute(node_id, connection_string)
-                            if traceroute_successful:
-                                save_node(node_id, last_heard, user, deviceMetrics, current_time.strftime("%Y-%m-%d %H:%M:%S"))
-                                sendMsg(node_id, welcome_message, connection_string)
-                            else:
-                                save_node(node_id, last_heard, user, deviceMetrics, current_time.strftime("%Y-%m-%d %H:%M:%S"))
-                                sendMsg(node_id, welcome_message, connection_string)
+                            _, log_line = run_traceroute(node_id, connection_string)
+                            log_traceroute(log_line)
+                            save_node(node_id, last_heard, user, deviceMetrics, current_time.strftime("%Y-%m-%d %H:%M:%S"))
+                            sendMsg(node_id, welcome_message, connection_string)
                     else:
                         print(f"{Fore.WHITE}{Style.BRIGHT} Skipping node {node_id} as it hasn't been heard from in over 2 hours.")
                 else:
