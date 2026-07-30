@@ -20,21 +20,25 @@ A command-line tool for [Meshtastic](https://meshtastic.org/) mesh network opera
 
 ## Installation
 
-Install a released build with pip, e.g. v0.86:
+The latest release of this fork is [v0.87](https://github.com/SirGCMHatoRey/meshtastic-new-node-processing/releases/tag/v0.87) — see its notes for what changed since v0.86. There's no prebuilt wheel for it; install from source:
+
+```bash
+git clone --branch v0.87 https://github.com/SirGCMHatoRey/meshtastic-new-node-processing.git
+cd meshtastic-new-node-processing
+pip install -e .
+```
+
+Or drop `--branch v0.87` to install the latest unreleased changes on `main`.
+
+### Prebuilt wheel (upstream, v0.86 and earlier)
+
+The original repo published prebuilt wheels through v0.86:
 
 ```bash
 pip install https://github.com/StevoKeano/meshtastic-new-node-processing/releases/download/v0.86/K3ANO_NewNodes-0.86-py3-none-any.whl
 ```
 
-See the [Releases page](https://github.com/StevoKeano/meshtastic-new-node-processing/releases) for all available versions and their exact asset filenames.
-
-### From source
-
-```bash
-git clone https://github.com/SirGCMHatoRey/meshtastic-new-node-processing.git
-cd meshtastic-new-node-processing
-pip install -e .
-```
+See its [Releases page](https://github.com/StevoKeano/meshtastic-new-node-processing/releases) for all versions and asset filenames.
 
 ## Usage
 
